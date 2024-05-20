@@ -93,7 +93,7 @@ module "cloudfront" {
   version = "~> 3.2.0"
 
   origin = [{
-    domain_name = module.s3_bucket.s3_bucket_bucket_regional_domain_name
+    domain_name = module.aws_s3_bucket.s3_bucket_bucket_regional_domain_name
     origin_id   = var.bucket_name
   }]
 
