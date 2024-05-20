@@ -12,7 +12,6 @@ locals {
   bucket_exists = false
 }
 
-# Null resource to check if the bucket exists
 resource "null_resource" "check_bucket" {
   provisioner "local-exec" {
     command = <<EOT
@@ -24,14 +23,17 @@ resource "null_resource" "check_bucket" {
         exit 1
       fi
     EOT
+    environment = {
+      AWS_DEFAULT_REGION = data.aws_region.current.name
+    }
   }
 
-  # Set the local variable based on the command exit status
   triggers = {
-    bucket_exists = "${local.bucket_exists}"
+    bucket_name = var.bucket_name
   }
 
   lifecycle {
+    create_before_destroy = true
     ignore_changes = [triggers]
   }
 }
@@ -40,7 +42,6 @@ resource "null_resource" "check_bucket" {
 resource "aws_s3_bucket" "this" {
   count  = local.bucket_exists ? 0 : 1
   bucket = var.bucket_name
-  acl    = "public-read"
 
   tags = {
     Name        = "MyS3Bucket"
@@ -69,7 +70,7 @@ resource "aws_s3_bucket_acl" "bucket_acl" {
   count = length(aws_s3_bucket.this)
 
   bucket = aws_s3_bucket.this[0].id
-  acl    = "public-read"
+  acl    = "private"
 }
 
 resource "aws_s3_bucket_versioning" "versioning_example" {
@@ -89,10 +90,10 @@ resource "aws_s3_bucket_policy" "public_read_policy" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect    = "Allow",
+        Effect = "Allow",
         Principal = "*",
-        Action    = "s3:GetObject",
-        Resource  = "${aws_s3_bucket.this[0].arn}/*"
+        Action = "s3:GetObject",
+        Resource = "${aws_s3_bucket.this[0].arn}/*"
       }
     ]
   })
