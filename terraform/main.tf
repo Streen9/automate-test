@@ -3,35 +3,36 @@
 #   type        = string
 # }
 
-# Local variable to check if bucket exists
+data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}
+
+# Local variable to determine if bucket exists
 locals {
   bucket_exists = false
 }
 
-# Attempt to read the bucket using a null resource
+# Null resource to check if the bucket exists
 resource "null_resource" "check_bucket" {
-  triggers = {
-    bucket = var.bucket_name
-  }
-
   provisioner "local-exec" {
     command = <<EOT
-      aws s3api head-bucket --bucket ${var.bucket_name} 2>/dev/null && echo "true" || echo "false"
+      if aws s3api head-bucket --bucket ${var.bucket_name} --region ${data.aws_region.current.name} 2>/dev/null; then
+        echo "Bucket exists"
+        exit 0
+      else
+        echo "Bucket does not exist"
+        exit 1
+      fi
     EOT
+  }
 
-    interpreter = ["bash", "-c"]
-    environment = {
-      AWS_DEFAULT_REGION = var.aws_region
-    }
+  # Set the local variable based on the command exit status
+  triggers = {
+    bucket_exists = "${local.bucket_exists}"
+  }
 
-    on_failure = {
-      "true" = {
-        bucket_exists = true
-      }
-      "false" = {
-        bucket_exists = false
-      }
-    }
+  lifecycle {
+    ignore_changes = [triggers]
   }
 }
 
@@ -39,7 +40,7 @@ resource "null_resource" "check_bucket" {
 resource "aws_s3_bucket" "this" {
   count  = local.bucket_exists ? 0 : 1
   bucket = var.bucket_name
-  # acl    = "public-read"
+  acl    = "public-read"
 
   tags = {
     Name        = "MyS3Bucket"
