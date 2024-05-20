@@ -1,12 +1,43 @@
+# variable "bucket_name" {
+#   description = "The name of the S3 bucket"
+#   type        = string
+# }
 
-resource "null_resource" "s3_bucket_check" {
+# Local variable to check if bucket exists
+locals {
+  bucket_exists = false
+}
+
+# Attempt to read the bucket using a null resource
+resource "null_resource" "check_bucket" {
   triggers = {
-    bucket_exists = coalesce(lookup(data.aws_s3_bucket.existing[0].id, "id", ""), "not_found")
+    bucket = var.bucket_name
+  }
+
+  provisioner "local-exec" {
+    command = <<EOT
+      aws s3api head-bucket --bucket ${var.bucket_name} 2>/dev/null && echo "true" || echo "false"
+    EOT
+
+    interpreter = ["bash", "-c"]
+    environment = {
+      AWS_DEFAULT_REGION = var.aws_region
+    }
+
+    on_failure = {
+      "true" = {
+        bucket_exists = true
+      }
+      "false" = {
+        bucket_exists = false
+      }
+    }
   }
 }
 
+# Create the bucket only if it doesn't exist
 resource "aws_s3_bucket" "this" {
-  count  = null_resource.s3_bucket_check.triggers.bucket_exists == "not_found" ? 1 : 0
+  count  = local.bucket_exists ? 0 : 1
   bucket = var.bucket_name
   # acl    = "public-read"
 
@@ -91,7 +122,7 @@ resource "aws_s3_bucket_website_configuration" "example" {
 data "aws_iam_policy_document" "s3_bucket_policy" {
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].arn : ""}/*"]
+    resources = ["${local.bucket_exists ? "arn:aws:s3:::${var.bucket_name}/*" : aws_s3_bucket.this[0].arn}/*"]
     principals {
       type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
@@ -109,7 +140,7 @@ module "cloudfront" {
   version = "~> 3.2.0"
 
   origin = [{
-    domain_name = length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].bucket_regional_domain_name : ""
+    domain_name = local.bucket_exists ? var.bucket_name : aws_s3_bucket.this[0].bucket_regional_domain_name
     origin_id   = var.bucket_name
   }]
 
@@ -142,7 +173,7 @@ module "cloudfront" {
 }
 
 output "s3_bucket_domain_name" {
-  value = length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].bucket_regional_domain_name : ""
+  value = local.bucket_exists ? var.bucket_name : aws_s3_bucket.this[0].bucket_regional_domain_name
 }
 
 output "cloudfront_domain_name" {
