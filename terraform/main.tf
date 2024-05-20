@@ -1,3 +1,4 @@
+
 data "aws_s3_bucket" "existing" {
   bucket = var.bucket_name
   count  = 0
@@ -6,6 +7,7 @@ data "aws_s3_bucket" "existing" {
 resource "aws_s3_bucket" "this" {
   count  = length(data.aws_s3_bucket.existing) == 0 ? 1 : 0
   bucket = var.bucket_name
+
 
   tags = {
     Name        = "MyS3Bucket"
@@ -32,10 +34,6 @@ resource "aws_s3_bucket_public_access_block" "example" {
 
 resource "aws_s3_bucket_acl" "bucket_acl" {
   count = length(aws_s3_bucket.this)
-  depends_on = [
-    aws_s3_bucket_ownership_controls.example,
-    aws_s3_bucket_public_access_block.example,
-  ]
 
   bucket = aws_s3_bucket.this[0].id
   acl    = "public-read"
@@ -50,6 +48,8 @@ resource "aws_s3_bucket_versioning" "versioning_example" {
 }
 
 resource "aws_s3_bucket_policy" "public_read_policy" {
+  count = length(aws_s3_bucket.this)
+
   bucket = aws_s3_bucket.this[0].id
 
   policy = jsonencode({
@@ -90,7 +90,7 @@ resource "aws_s3_bucket_website_configuration" "example" {
 data "aws_iam_policy_document" "s3_bucket_policy" {
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].arn : data.aws_s3_bucket.existing.arn}/*"]
+    resources = ["${length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].arn : ""}/*"]
     principals {
       type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
@@ -102,7 +102,6 @@ data "aws_iam_policy_document" "s3_bucket_policy" {
     }
   }
 }
-
 
 module "cloudfront" {
   source  = "terraform-aws-modules/cloudfront/aws"
@@ -142,15 +141,13 @@ module "cloudfront" {
 }
 
 output "s3_bucket_domain_name" {
-  value = data.aws_s3_bucket.existing.bucket_regional_domain_name
+  value = length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].bucket_regional_domain_name : data.aws_s3_bucket.existing.bucket_regional_domain_name
 }
 
-# Output the CloudFront domain name
 output "cloudfront_domain_name" {
   value = module.cloudfront.cloudfront_distribution_domain_name
 }
 
-# Output the CloudFront distribution ID
 output "cloudfront_distribution_id" {
-  value = length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].bucket_regional_domain_name : data.aws_s3_bucket.existing.bucket_regional_domain_name
+  value = module.cloudfront.cloudfront_distribution_id
 }
