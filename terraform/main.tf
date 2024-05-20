@@ -10,6 +10,7 @@ data "aws_s3_bucket" "existing" {
 # creating the s3 bucket versioning
 # creating the s3 bucket website configuration
 resource "aws_s3_bucket" "this" {
+  count  = length(data.aws_s3_bucket.existing.id) == 0 ? 1 : 0
   bucket = var.bucket_name
   tags = {
     Name        = "MyS3Bucket"
@@ -18,15 +19,16 @@ resource "aws_s3_bucket" "this" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "example" {
-  bucket = aws_s3_bucket.this.id
+  count = aws_s3_bucket.this.count
+  bucket = aws_s3_bucket.this[0].id
   rule {
     object_ownership = "BucketOwnerPreferred"
   }
 }
 
 resource "aws_s3_bucket_public_access_block" "example" {
-  bucket = aws_s3_bucket.this.id
-
+  count = aws_s3_bucket.this.count
+  bucket = aws_s3_bucket.this[0].id
   block_public_acls       = false
   block_public_policy     = false
   ignore_public_acls      = false
@@ -34,24 +36,27 @@ resource "aws_s3_bucket_public_access_block" "example" {
 }
 
 resource "aws_s3_bucket_acl" "bucket_acl" {
+  count = aws_s3_bucket.this.count
   depends_on = [
     aws_s3_bucket_ownership_controls.example,
     aws_s3_bucket_public_access_block.example,
   ]
 
-  bucket = aws_s3_bucket.this.id
+  bucket = aws_s3_bucket.this[0].id
   acl    = "public-read"
 }
 
 resource "aws_s3_bucket_versioning" "versioning_example" {
-  bucket = aws_s3_bucket.this.id
+  count = aws_s3_bucket.this.count
+  bucket = aws_s3_bucket.this[0].id
   versioning_configuration {
     status = "Enabled"
   }
 }
 
 resource "aws_s3_bucket_website_configuration" "example" {
-  bucket = aws_s3_bucket.this.id
+  count = aws_s3_bucket.this.count
+  bucket = aws_s3_bucket.this[0].id
 
   index_document {
     suffix = "index.html"
@@ -74,7 +79,7 @@ resource "aws_s3_bucket_website_configuration" "example" {
 data "aws_iam_policy_document" "s3_bucket_policy" {
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.this.arn}/*"]
+    resources = ["${aws_s3_bucket.this[0].arn}/*"]
     principals {
       type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
@@ -93,7 +98,7 @@ module "cloudfront" {
   version = "~> 3.2.0"
 
   origin = [{
-    domain_name = aws_s3_bucket.this.bucket_regional_domain_name
+    domain_name = aws_s3_bucket.this[0].bucket_regional_domain_name
     origin_id   = var.bucket_name
   }]
 
@@ -126,7 +131,7 @@ module "cloudfront" {
 }
 
 output "s3_bucket_domain_name" {
-  value = aws_s3_bucket.this.bucket_regional_domain_name
+  value = aws_s3_bucket.this[0].bucket_regional_domain_name
 }
 
 # Output the CloudFront domain name
