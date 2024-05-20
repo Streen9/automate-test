@@ -19,7 +19,7 @@ resource "aws_s3_bucket" "this" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "example" {
-  count = aws_s3_bucket.this.count
+  count = length(aws_s3_bucket.this)
   bucket = aws_s3_bucket.this[0].id
   rule {
     object_ownership = "BucketOwnerPreferred"
@@ -27,7 +27,7 @@ resource "aws_s3_bucket_ownership_controls" "example" {
 }
 
 resource "aws_s3_bucket_public_access_block" "example" {
-  count = aws_s3_bucket.this.count
+  count = length(aws_s3_bucket.this)
   bucket = aws_s3_bucket.this[0].id
   block_public_acls       = false
   block_public_policy     = false
@@ -36,7 +36,7 @@ resource "aws_s3_bucket_public_access_block" "example" {
 }
 
 resource "aws_s3_bucket_acl" "bucket_acl" {
-  count = aws_s3_bucket.this.count
+  count = length(aws_s3_bucket.this)
   depends_on = [
     aws_s3_bucket_ownership_controls.example,
     aws_s3_bucket_public_access_block.example,
@@ -47,7 +47,7 @@ resource "aws_s3_bucket_acl" "bucket_acl" {
 }
 
 resource "aws_s3_bucket_versioning" "versioning_example" {
-  count = aws_s3_bucket.this.count
+  count = length(aws_s3_bucket.this)
   bucket = aws_s3_bucket.this[0].id
   versioning_configuration {
     status = "Enabled"
@@ -55,7 +55,7 @@ resource "aws_s3_bucket_versioning" "versioning_example" {
 }
 
 resource "aws_s3_bucket_website_configuration" "example" {
-  count = aws_s3_bucket.this.count
+  count = length(aws_s3_bucket.this)
   bucket = aws_s3_bucket.this[0].id
 
   index_document {
