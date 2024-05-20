@@ -60,7 +60,10 @@ jobs:
           npm i
           npm run build
         working-directory: ./frontend
-
+      - name: List directory contents
+        run: ls -la
+        working-directory: ./frontend
+        
       - name: Sync to S3
         run: |
           aws s3 sync ./build s3://${{ secrets.AWS_S3_BUCKET_NAME }} --delete
