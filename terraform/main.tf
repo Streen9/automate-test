@@ -3,29 +3,71 @@ data "aws_s3_bucket" "existing" {
 }
 
 
-resource "s3_bucket" "this" {
-  count  = length(data.aws_s3_bucket.existing.id) == 0 ? 1 : 0
+# creating the s3 bucket
+# creating the s3 bucket ownership control
+# creating the s3 public access block
+# creating the s3 bucket acl
+# creating the s3 bucket versioning
+# creating the s3 bucket website configuration
+resource "aws_s3_bucket" "this" {
   bucket = var.bucket_name
-  acl    = "public-read"
   tags = {
     Name        = "MyS3Bucket"
     Environment = "Production"
   }
+}
 
-  control_object_ownership = true
-  object_ownership         = "BucketOwnerPreferred"
+resource "aws_s3_bucket_ownership_controls" "example" {
+  bucket = aws_s3_bucket.this.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "example" {
+  bucket = aws_s3_bucket.this.id
 
   block_public_acls       = false
   block_public_policy     = false
   ignore_public_acls      = false
   restrict_public_buckets = false
+}
 
-  versioning = {
-    enabled = true
+resource "aws_s3_bucket_acl" "bucket_acl" {
+  depends_on = [
+    aws_s3_bucket_ownership_controls.example,
+    aws_s3_bucket_public_access_block.example,
+  ]
+
+  bucket = aws_s3_bucket.this.id
+  acl    = "public_read"
+}
+
+resource "aws_s3_bucket_versioning" "versioning_example" {
+  bucket = aws_s3_bucket.this.id
+  versioning_configuration {
+    status = "Enabled"
   }
-  website = {
-    index_document = "index.html"
-    error_document = "error.html"
+}
+
+resource "aws_s3_bucket_website_configuration" "example" {
+  bucket = aws_s3_bucket.this.id
+
+  index_document {
+    suffix = "index.html"
+  }
+
+  error_document {
+    key = "error.html"
+  }
+
+  routing_rule {
+    condition {
+      key_prefix_equals = "docs/"
+    }
+    redirect {
+      replace_key_prefix_with = "documents/"
+    }
   }
 }
 
