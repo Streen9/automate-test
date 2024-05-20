@@ -19,7 +19,7 @@ resource "aws_s3_bucket" "this" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "example" {
-  count = length(aws_s3_bucket.this)
+  count  = length(aws_s3_bucket.this)
   bucket = aws_s3_bucket.this[0].id
   rule {
     object_ownership = "BucketOwnerPreferred"
@@ -27,8 +27,8 @@ resource "aws_s3_bucket_ownership_controls" "example" {
 }
 
 resource "aws_s3_bucket_public_access_block" "example" {
-  count = length(aws_s3_bucket.this)
-  bucket = aws_s3_bucket.this[0].id
+  count                   = length(aws_s3_bucket.this)
+  bucket                  = aws_s3_bucket.this[0].id
   block_public_acls       = false
   block_public_policy     = false
   ignore_public_acls      = false
@@ -47,7 +47,7 @@ resource "aws_s3_bucket_acl" "bucket_acl" {
 }
 
 resource "aws_s3_bucket_versioning" "versioning_example" {
-  count = length(aws_s3_bucket.this)
+  count  = length(aws_s3_bucket.this)
   bucket = aws_s3_bucket.this[0].id
   versioning_configuration {
     status = "Enabled"
@@ -55,7 +55,7 @@ resource "aws_s3_bucket_versioning" "versioning_example" {
 }
 
 resource "aws_s3_bucket_website_configuration" "example" {
-  count = length(aws_s3_bucket.this)
+  count  = length(aws_s3_bucket.this)
   bucket = aws_s3_bucket.this[0].id
 
   index_document {
@@ -79,7 +79,7 @@ resource "aws_s3_bucket_website_configuration" "example" {
 data "aws_iam_policy_document" "s3_bucket_policy" {
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.this[0].arn}/*"]
+    resources = ["${data.aws_s3_bucket.existing.arn}/*"]
     principals {
       type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
@@ -98,7 +98,7 @@ module "cloudfront" {
   version = "~> 3.2.0"
 
   origin = [{
-    domain_name = aws_s3_bucket.this[0].bucket_regional_domain_name
+    domain_name = data.aws_s3_bucket.existing.bucket_regional_domain_name
     origin_id   = var.bucket_name
   }]
 
@@ -131,7 +131,7 @@ module "cloudfront" {
 }
 
 output "s3_bucket_domain_name" {
-  value = aws_s3_bucket.this[0].bucket_regional_domain_name
+  value = data.aws_s3_bucket.existing.bucket_regional_domain_name
 }
 
 # Output the CloudFront domain name
