@@ -5,7 +5,7 @@ variable "aws_region" {
 }
 
 variable "bucket_name" {
-  default = "tf-bucket-automate-test"
+  default = "tf-bucket-automate-test-1"
   type = string
 }
 
