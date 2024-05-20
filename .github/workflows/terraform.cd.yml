@@ -1,17 +1,16 @@
 # @format
-name: CI workflow to format, validate and plan terraform 
+name: CI workflow to format, validate, plan, apply terraform and deploy website
 env:
   AWS_REGION: "us-west-2"
 
 on:
   push:
     branches: 
-      main
-      
+      - main
 
 jobs:
   CI:
-    name: "Global CI Workflow to format and validate terraform infrastructure"
+    name: "Global CI Workflow to format, validate, apply terraform and deploy website"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -50,3 +49,17 @@ jobs:
         working-directory: ./terraform
         run: |
           terraform apply --auto-approve
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+
+      - name: Install dependencies and build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync ./build s3://${{ secrets.AWS_S3_BUCKET_NAME }} --delete
