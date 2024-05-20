@@ -1,11 +1,15 @@
 
+locals {
+  s3_bucket_exists = length([for b in try(data.aws_s3_bucket.existing[0].id, []) : b]) > 0
+}
+
 data "aws_s3_bucket" "existing" {
   bucket = var.bucket_name
   count  = 1
 }
 
 resource "aws_s3_bucket" "this" {
-  count  = length(data.aws_s3_bucket.existing) == 0 ? 1 : 0
+  count  = local.s3_bucket_exists ? 0 : 1
   bucket = var.bucket_name
   # acl    = "public-read"
 
@@ -90,7 +94,7 @@ resource "aws_s3_bucket_website_configuration" "example" {
 data "aws_iam_policy_document" "s3_bucket_policy" {
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].arn : data.aws_s3_bucket.existing[0].arn}/*"]
+    resources = ["${local.s3_bucket_exists ? data.aws_s3_bucket.existing[0].arn : aws_s3_bucket.this[0].arn}/*"]
     principals {
       type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
@@ -108,7 +112,7 @@ module "cloudfront" {
   version = "~> 3.2.0"
 
   origin = [{
-    domain_name = length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].bucket_regional_domain_name : data.aws_s3_bucket.existing[0].bucket_regional_domain_name
+    domain_name = local.s3_bucket_exists ? data.aws_s3_bucket.existing[0].bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
     origin_id   = var.bucket_name
   }]
 
@@ -141,7 +145,7 @@ module "cloudfront" {
 }
 
 output "s3_bucket_domain_name" {
-  value = length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].bucket_regional_domain_name : data.aws_s3_bucket.existing[0].bucket_regional_domain_name
+  value = local.s3_bucket_exists ? data.aws_s3_bucket.existing[0].bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
 }
 
 output "cloudfront_domain_name" {
