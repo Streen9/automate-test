@@ -1,7 +1,7 @@
 module "s3_bucket" {
   source = "terraform-aws-modules/s3-bucket/aws"
 
-  bucket = "tf-bucket"
+  bucket = "tf-bucket-automate-test"
   acl    = "private"
 
   control_object_ownership = true
