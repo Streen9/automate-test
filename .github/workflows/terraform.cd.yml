@@ -45,8 +45,8 @@ jobs:
         run: |
           terraform plan
 
-      - name: Terraform Plan
+      - name: Terraform Apply
         id: apply
         working-directory: ./terraform
         run: |
-          terraform apply
+          terraform apply --auto-approve
