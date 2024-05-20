@@ -1,10 +1,12 @@
 data "aws_s3_bucket" "existing" {
   bucket = var.bucket_name
+  count  = 0
 }
 
 resource "aws_s3_bucket" "this" {
-  count  = data.aws_s3_bucket.existing.id != null ? 0 : 1
+  count  = length(data.aws_s3_bucket.existing) == 0 ? 1 : 0
   bucket = var.bucket_name
+
   tags = {
     Name        = "MyS3Bucket"
     Environment = "Production"
