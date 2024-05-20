@@ -1,10 +1,9 @@
 data "aws_s3_bucket" "existing" {
-  count  = length(aws_s3_bucket.this) > 0 ? 0 : 1
   bucket = var.bucket_name
 }
 
 resource "aws_s3_bucket" "this" {
-  count  = length(data.aws_s3_bucket.existing.*.id) > 0 ? 0 : 1
+  count  = data.aws_s3_bucket.existing.id != null ? 0 : 1
   bucket = var.bucket_name
   tags = {
     Name        = "MyS3Bucket"
