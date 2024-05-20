@@ -1,16 +1,10 @@
 data "aws_s3_bucket" "existing" {
+  count  = length(aws_s3_bucket.this) > 0 ? 0 : 1
   bucket = var.bucket_name
 }
 
-
-# creating the s3 bucket
-# creating the s3 bucket ownership control
-# creating the s3 public access block
-# creating the s3 bucket acl
-# creating the s3 bucket versioning
-# creating the s3 bucket website configuration
 resource "aws_s3_bucket" "this" {
-  count  = length(data.aws_s3_bucket.existing.id) == 0 ? 1 : 0
+  count  = length(data.aws_s3_bucket.existing.*.id) > 0 ? 0 : 1
   bucket = var.bucket_name
   tags = {
     Name        = "MyS3Bucket"
