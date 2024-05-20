@@ -18,7 +18,7 @@ module "s3_bucket" {
   website = {
     index_document = "index.html"
     error_document = "error.html"
-  }
+  } 
 }
 
 data "aws_iam_policy_document" "s3_bucket_policy" {
@@ -80,7 +80,7 @@ output "s3_bucket_domain_name" {
 }
 
 output "cloudfront_domain_name" {
-  value = module.cloudfront.cloudfront_domain_name
+  value = module.cloudfront.cloudfront_distribution_id
 }
 
 output "cloudfront_distribution_id" {
