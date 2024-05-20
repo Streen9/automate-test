@@ -79,7 +79,7 @@ resource "aws_s3_bucket_website_configuration" "example" {
 data "aws_iam_policy_document" "s3_bucket_policy" {
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${coalesce(aws_s3_bucket.this[0].arn, data.aws_s3_bucket.existing.arn)}/*"]
+    resources = ["${length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].arn : data.aws_s3_bucket.existing.arn}/*"]
     principals {
       type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
@@ -98,7 +98,7 @@ module "cloudfront" {
   version = "~> 3.2.0"
 
   origin = [{
-    domain_name = coalesce(aws_s3_bucket.this[0].bucket_regional_domain_name, data.aws_s3_bucket.existing.bucket_regional_domain_name)
+    domain_name = length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].bucket_regional_domain_name : data.aws_s3_bucket.existing.bucket_regional_domain_name
     origin_id   = var.bucket_name
   }]
 
@@ -141,5 +141,5 @@ output "cloudfront_domain_name" {
 
 # Output the CloudFront distribution ID
 output "cloudfront_distribution_id" {
-  value = coalesce(aws_s3_bucket.this[0].bucket_regional_domain_name, data.aws_s3_bucket.existing.bucket_regional_domain_name)
+  value = length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].bucket_regional_domain_name : data.aws_s3_bucket.existing.bucket_regional_domain_name
 }
