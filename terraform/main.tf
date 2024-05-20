@@ -1,8 +1,16 @@
-module "s3_bucket" {
-  source = "terraform-aws-modules/s3-bucket/aws"
+data "aws_s3_bucket" "existing" {
+  bucket = var.bucket_name
+}
 
+
+resource "s3_bucket" "this" {
+  count  = length(data.aws_s3_bucket.existing.id) == 0 ? 1 : 0
   bucket = var.bucket_name
   acl    = "public-read"
+  tags = {
+    Name        = "MyS3Bucket"
+    Environment = "Production"
+  }
 
   control_object_ownership = true
   object_ownership         = "BucketOwnerPreferred"
@@ -18,7 +26,7 @@ module "s3_bucket" {
   website = {
     index_document = "index.html"
     error_document = "error.html"
-  } 
+  }
 }
 
 data "aws_iam_policy_document" "s3_bucket_policy" {
