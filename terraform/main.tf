@@ -93,7 +93,7 @@ module "cloudfront" {
   version = "~> 3.2.0"
 
   origin = [{
-    domain_name = module.aws_s3_bucket.s3_bucket_bucket_regional_domain_name
+    domain_name = aws_s3_bucket.this.bucket_regional_domain_name
     origin_id   = var.bucket_name
   }]
 
@@ -126,7 +126,7 @@ module "cloudfront" {
 }
 
 output "s3_bucket_domain_name" {
-  value = module.s3_bucket.s3_bucket_bucket_regional_domain_name
+  value = aws_s3_bucket.this.bucket_regional_domain_name
 }
 
 # Output the CloudFront domain name
