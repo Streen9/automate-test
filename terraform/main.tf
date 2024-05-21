@@ -1,9 +1,13 @@
-data "aws_s3_bucket" "existing" {
-  bucket = var.bucket_name
+data "external" "bucket_exists" {
+  program = ["bash", "${path.module}/check_bucket.sh", var.bucket_name]
+
+  query = {
+    bucket_name = var.bucket_name
+  }
 }
 
 resource "aws_s3_bucket" "this" {
-  count  = length(data.aws_s3_bucket.existing.id) == 0 ? 1 : 0
+  count  = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   bucket = var.bucket_name
   tags = {
     Name        = "MyS3Bucket"
@@ -12,7 +16,7 @@ resource "aws_s3_bucket" "this" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "example" {
-  count  = length(aws_s3_bucket.this)
+  count  = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   bucket = aws_s3_bucket.this[0].id
   rule {
     object_ownership = "BucketOwnerPreferred"
@@ -20,7 +24,7 @@ resource "aws_s3_bucket_ownership_controls" "example" {
 }
 
 resource "aws_s3_bucket_public_access_block" "example" {
-  count                   = length(aws_s3_bucket.this)
+  count                   = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   bucket                  = aws_s3_bucket.this[0].id
   block_public_acls       = false
   block_public_policy     = false
@@ -29,7 +33,7 @@ resource "aws_s3_bucket_public_access_block" "example" {
 }
 
 resource "aws_s3_bucket_acl" "bucket_acl" {
-  count = length(aws_s3_bucket.this)
+  count = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   depends_on = [
     aws_s3_bucket_ownership_controls.example,
     aws_s3_bucket_public_access_block.example,
@@ -40,7 +44,7 @@ resource "aws_s3_bucket_acl" "bucket_acl" {
 }
 
 resource "aws_s3_bucket_versioning" "versioning_example" {
-  count  = length(aws_s3_bucket.this)
+  count  = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   bucket = aws_s3_bucket.this[0].id
   versioning_configuration {
     status = "Enabled"
@@ -48,13 +52,13 @@ resource "aws_s3_bucket_versioning" "versioning_example" {
 }
 
 resource "aws_s3_bucket_policy" "bucket_policy" {
-  count  = length(aws_s3_bucket.this)
+  count  = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   bucket = aws_s3_bucket.this[0].id
   policy = data.aws_iam_policy_document.s3_bucket_policy.json
 }
 
 resource "aws_s3_bucket_website_configuration" "example" {
-  count  = length(aws_s3_bucket.this)
+  count  = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   bucket = aws_s3_bucket.this[0].id
 
   index_document {
