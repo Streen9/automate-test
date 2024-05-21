@@ -6,6 +6,11 @@ data "external" "bucket_exists" {
   }
 }
 
+data "aws_s3_bucket" "existing" {
+  count  = data.external.bucket_exists.result["exists"] == "true" ? 1 : 0
+  bucket = var.bucket_name
+}
+
 resource "aws_s3_bucket" "this" {
   count  = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   bucket = var.bucket_name
