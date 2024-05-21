@@ -144,9 +144,9 @@ module "cloudfront" {
   }
 }
 
-output "s3_bucket_domain_name" {
-  value = data.external.bucket_exists.result["exists"] == "true" ? data.aws_s3_bucket.existing[0].bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
-}
+# output "s3_bucket_domain_name" {
+#   value = data.external.bucket_exists.result["exists"] == "true" ? data.aws_s3_bucket.existing[0].bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
+# }
 
 # Output the CloudFront domain name
 output "s3_bucket_domain_name" {
