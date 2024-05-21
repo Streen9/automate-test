@@ -20,7 +20,7 @@ data "aws_s3_bucket" "existing" {
 
 
 resource "aws_s3_bucket" "this" {
-  count  = data.external.bucket_exists.result["exists"] == 0 ? 0 : 1
+  count  = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   bucket = var.bucket_name
   tags = {
     Name        = "MyS3Bucket"
@@ -29,7 +29,7 @@ resource "aws_s3_bucket" "this" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "example" {
-  count  = data.external.bucket_exists.result["exists"] == 0 ? 0 : 1
+  count  = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   bucket = aws_s3_bucket.this[0].id
   rule {
     object_ownership = "BucketOwnerPreferred"
@@ -37,7 +37,7 @@ resource "aws_s3_bucket_ownership_controls" "example" {
 }
 
 resource "aws_s3_bucket_public_access_block" "example" {
-  count                   = data.external.bucket_exists.result["exists"] == 0 ? 0 : 1
+  count                   = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   bucket                  = aws_s3_bucket.this[0].id
   block_public_acls       = false
   block_public_policy     = false
@@ -46,7 +46,7 @@ resource "aws_s3_bucket_public_access_block" "example" {
 }
 
 resource "aws_s3_bucket_acl" "bucket_acl" {
-  count = data.external.bucket_exists.result["exists"] == 0 ? 0 : 1
+  count = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   depends_on = [
     aws_s3_bucket_ownership_controls.example,
     aws_s3_bucket_public_access_block.example,
@@ -57,7 +57,7 @@ resource "aws_s3_bucket_acl" "bucket_acl" {
 }
 
 resource "aws_s3_bucket_versioning" "versioning_example" {
-  count  = data.external.bucket_exists.result["exists"] == 0 ? 0 : 1
+  count  = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   bucket = aws_s3_bucket.this[0].id
   versioning_configuration {
     status = "Enabled"
@@ -65,13 +65,13 @@ resource "aws_s3_bucket_versioning" "versioning_example" {
 }
 
 resource "aws_s3_bucket_policy" "bucket_policy" {
-  count  = data.external.bucket_exists.result["exists"] == 0 ? 0 : 1
+  count  = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   bucket = aws_s3_bucket.this[0].id
   policy = data.aws_iam_policy_document.s3_bucket_policy.json
 }
 
 resource "aws_s3_bucket_website_configuration" "example" {
-  count  = data.external.bucket_exists.result["exists"] == 0 ? 0 : 1
+  count  = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
   bucket = aws_s3_bucket.this[0].id
 
   index_document {
@@ -95,7 +95,7 @@ resource "aws_s3_bucket_website_configuration" "example" {
 data "aws_iam_policy_document" "s3_bucket_policy" {
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${data.external.bucket_exists.result["exists"] == 0 ? data.aws_s3_bucket.existing[0].arn : aws_s3_bucket.this[0].arn}/*"]
+    resources = ["${data.external.bucket_exists.result["exists"] == "true" ? data.aws_s3_bucket.existing[0].arn : aws_s3_bucket.this[0].arn}/*"]
     principals {
       type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
@@ -114,7 +114,7 @@ module "cloudfront" {
   version = "~> 3.2.0"
 
   origin = [{
-    domain_name           = data.external.bucket_exists.result["exists"] == 0 ? data.aws_s3_bucket.existing[0].bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
+    domain_name           = data.external.bucket_exists.result["exists"] == "true" ? data.aws_s3_bucket.existing[0].bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
     origin_id             = var.bucket_name
     origin_access_control = "s3"
   }]
@@ -163,7 +163,7 @@ module "cloudfront" {
 
 # Output the CloudFront domain name
 output "s3_bucket_domain_name" {
-  value = data.external.bucket_exists.result["exists"] == 0 && length(data.aws_s3_bucket.existing) > 0 ? data.aws_s3_bucket.existing[0].bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
+  value = data.external.bucket_exists.result["exists"] == "true" && length(data.aws_s3_bucket.existing) > 0 ? data.aws_s3_bucket.existing[0].bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
 }
 
 output "cloudfront_distribution_id" {
