@@ -101,7 +101,7 @@ module "cloudfront" {
   version = "~> 3.2.0"
 
   origin = [{
-    domain_name           = data.external.bucket_exists.result["exists"] == "true" ? data.aws_s3_bucket.existing[0].bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
+    domain_name = data.external.bucket_exists.result["exists"] == "true" ? data.aws_s3_bucket.existing[0].bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
     origin_id             = var.bucket_name
     origin_access_control = "s3"
   }]
@@ -150,7 +150,7 @@ module "cloudfront" {
 
 # Output the CloudFront domain name
 output "s3_bucket_domain_name" {
-  value = data.external.bucket_exists.result["exists"] == "true" ? data.aws_s3_bucket.existing[0].bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
+  value = data.external.bucket_exists.result["exists"] == "true" && length(data.aws_s3_bucket.existing) > 0 ? data.aws_s3_bucket.existing[0].bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
 }
 
 output "cloudfront_distribution_id" {
