@@ -82,7 +82,7 @@ resource "aws_s3_bucket_website_configuration" "example" {
 data "aws_iam_policy_document" "s3_bucket_policy" {
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].arn : data.aws_s3_bucket.existing.arn}/*"]
+    resources = ["${data.external.bucket_exists.result["exists"] == "true" ? data.aws_s3_bucket.existing.arn : aws_s3_bucket.this[0].arn}/*"]
     principals {
       type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
@@ -101,7 +101,7 @@ module "cloudfront" {
   version = "~> 3.2.0"
 
   origin = [{
-    domain_name           = length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].bucket_regional_domain_name : data.aws_s3_bucket.existing.bucket_regional_domain_name
+    domain_name           = data.external.bucket_exists.result["exists"] == "true" ? data.aws_s3_bucket.existing.bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
     origin_id             = var.bucket_name
     origin_access_control = "s3"
   }]
@@ -145,7 +145,7 @@ module "cloudfront" {
 }
 
 output "s3_bucket_domain_name" {
-  value = data.aws_s3_bucket.existing.bucket_regional_domain_name
+  value = data.external.bucket_exists.result["exists"] == "true" ? data.aws_s3_bucket.existing.bucket_regional_domain_name : aws_s3_bucket.this[0].bucket_regional_domain_name
 }
 
 # Output the CloudFront domain name
