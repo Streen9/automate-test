@@ -1,48 +1,10 @@
-# variable "bucket_name" {
-#   description = "The name of the S3 bucket"
-#   type        = string
-# }
-
-data "aws_caller_identity" "current" {}
-
-data "aws_region" "current" {}
-
-# Local variable to determine if bucket exists
-locals {
-  bucket_exists = false
-}
-
-resource "null_resource" "check_bucket" {
-  provisioner "local-exec" {
-    command = <<EOT
-      if aws s3api head-bucket --bucket ${var.bucket_name} --region ${data.aws_region.current.name} 2>/dev/null; then
-        echo "Bucket exists"
-        exit 0
-      else
-        echo "Bucket does not exist"
-        exit 1
-      fi
-    EOT
-    environment = {
-      AWS_DEFAULT_REGION = data.aws_region.current.name
-    }
-  }
-
-  triggers = {
-    bucket_name = var.bucket_name
-  }
-
-  lifecycle {
-    create_before_destroy = true
-    ignore_changes = [triggers]
-  }
-}
-
-# Create the bucket only if it doesn't exist
-resource "aws_s3_bucket" "this" {
-  count  = local.bucket_exists ? 0 : 1
+data "aws_s3_bucket" "existing" {
   bucket = var.bucket_name
+}
 
+resource "aws_s3_bucket" "this" {
+  count  = length(data.aws_s3_bucket.existing.id) == 0 ? 1 : 0
+  bucket = var.bucket_name
   tags = {
     Name        = "MyS3Bucket"
     Environment = "Production"
@@ -68,9 +30,13 @@ resource "aws_s3_bucket_public_access_block" "example" {
 
 resource "aws_s3_bucket_acl" "bucket_acl" {
   count = length(aws_s3_bucket.this)
+  depends_on = [
+    aws_s3_bucket_ownership_controls.example,
+    aws_s3_bucket_public_access_block.example,
+  ]
 
   bucket = aws_s3_bucket.this[0].id
-  acl    = "private"
+  acl    = "public-read"
 }
 
 resource "aws_s3_bucket_versioning" "versioning_example" {
@@ -81,22 +47,10 @@ resource "aws_s3_bucket_versioning" "versioning_example" {
   }
 }
 
-resource "aws_s3_bucket_policy" "public_read_policy" {
-  count = length(aws_s3_bucket.this)
-
+resource "aws_s3_bucket_policy" "bucket_policy" {
+  count  = length(aws_s3_bucket.this)
   bucket = aws_s3_bucket.this[0].id
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Principal = "*",
-        Action = "s3:GetObject",
-        Resource = "${aws_s3_bucket.this[0].arn}/*"
-      }
-    ]
-  })
+  policy = data.aws_iam_policy_document.s3_bucket_policy.json
 }
 
 resource "aws_s3_bucket_website_configuration" "example" {
@@ -124,7 +78,7 @@ resource "aws_s3_bucket_website_configuration" "example" {
 data "aws_iam_policy_document" "s3_bucket_policy" {
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${local.bucket_exists ? "arn:aws:s3:::${var.bucket_name}/*" : aws_s3_bucket.this[0].arn}/*"]
+    resources = ["${length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].arn : data.aws_s3_bucket.existing.arn}/*"]
     principals {
       type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
@@ -137,20 +91,32 @@ data "aws_iam_policy_document" "s3_bucket_policy" {
   }
 }
 
+
 module "cloudfront" {
   source  = "terraform-aws-modules/cloudfront/aws"
   version = "~> 3.2.0"
 
   origin = [{
-    domain_name = local.bucket_exists ? var.bucket_name : aws_s3_bucket.this[0].bucket_regional_domain_name
-    origin_id   = var.bucket_name
+    domain_name           = length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].bucket_regional_domain_name : data.aws_s3_bucket.existing.bucket_regional_domain_name
+    origin_id             = var.bucket_name
+    origin_access_control = "s3"
   }]
 
-  enabled             = true
-  is_ipv6_enabled     = true
-  comment             = "cloudfront with s3 ${var.bucket_name}"
-  default_root_object = var.cloudfront_default_root_object
-  price_class         = var.cloudfront_price_class
+  enabled                      = true
+  is_ipv6_enabled              = true
+  comment                      = "cloudfront with s3 ${var.bucket_name}"
+  default_root_object          = var.cloudfront_default_root_object
+  price_class                  = var.cloudfront_price_class
+  create_origin_access_control = true
+
+  origin_access_control = {
+    s3 = {
+      description      = "CloudFront access to S3"
+      origin_type      = "s3"
+      signing_behavior = "always"
+      signing_protocol = "sigv4"
+    }
+  }
 
   default_cache_behavior = {
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]
@@ -175,13 +141,15 @@ module "cloudfront" {
 }
 
 output "s3_bucket_domain_name" {
-  value = local.bucket_exists ? var.bucket_name : aws_s3_bucket.this[0].bucket_regional_domain_name
+  value = data.aws_s3_bucket.existing.bucket_regional_domain_name
 }
 
+# Output the CloudFront domain name
 output "cloudfront_domain_name" {
   value = module.cloudfront.cloudfront_distribution_domain_name
 }
 
+# Output the CloudFront distribution ID
 output "cloudfront_distribution_id" {
-  value = module.cloudfront.cloudfront_distribution_id
+  value = length(aws_s3_bucket.this) > 0 ? aws_s3_bucket.this[0].bucket_regional_domain_name : data.aws_s3_bucket.existing.bucket_regional_domain_name
 }
