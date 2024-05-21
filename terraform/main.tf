@@ -87,7 +87,7 @@ resource "aws_s3_bucket_website_configuration" "example" {
 data "aws_iam_policy_document" "s3_bucket_policy" {
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${data.external.bucket_exists.result["exists"] == "true" ? data.aws_s3_bucket.existing.arn : aws_s3_bucket.this[0].arn}/*"]
+    resources = ["${data.external.bucket_exists.result["exists"] == "true" ? data.aws_s3_bucket.existing[0].arn : aws_s3_bucket.this[0].arn}/*"]
     principals {
       type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
