@@ -6,10 +6,18 @@ data "external" "bucket_exists" {
   }
 }
 
+resource "null_resource" "wait_for_bucket_check" {
+  depends_on = [data.external.bucket_exists]
+  triggers = {
+    bucket_check = data.external.bucket_exists.result["stdout"]
+  }
+}
+
 data "aws_s3_bucket" "existing" {
-  count  = data.external.bucket_exists.result["exists"] == "true" ? 1 : 0
+  count  = data.external.bucket_exists.result["stdout"] == "Bucket ${var.bucket_name} exists" ? 1 : 0
   bucket = var.bucket_name
 }
+
 
 resource "aws_s3_bucket" "this" {
   count  = data.external.bucket_exists.result["exists"] == "true" ? 0 : 1
