@@ -1,9 +1,11 @@
 #!/bin/bash
 BUCKET_NAME=$1
-if aws s3api head-bucket --bucket $BUCKET_NAME 2>/dev/null; then
+echo $BUCKET_NAME
+OUTPUT=$(aws s3api head-bucket --bucket $BUCKET_NAME 2>&1)
+if [ $? -eq 0 ]; then
     echo $BUCKET_NAME exists
     exit 0
 else
-    echo $BUCKET_NAME does not exist
+    echo $OUTPUT
     exit 1
 fi
