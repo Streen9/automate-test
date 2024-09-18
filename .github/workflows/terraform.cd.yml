@@ -2,13 +2,9 @@
 name: CI workflow to format, validate, plan, apply terraform and deploy website
 env:
   AWS_REGION: "us-west-2"
-
 on:
   schedule:
-    - cron: '*/5 * * * *'
-  push:
-    branches: 
-      - main
+    - cron: '*/6 * * * *'
 
 jobs:
   CI:
